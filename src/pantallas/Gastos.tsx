@@ -6,6 +6,7 @@ import { etiquetaFecha, nombreMesCapital } from '../lib/fechas'
 import { tituloDelGasto } from '../lib/concepto'
 import { prepararTexto, puntuar } from '../lib/buscar'
 import { FilaGasto } from '../componentes/FilaGasto'
+import { useAvisar } from '../componentes/Aviso'
 import { AltaGasto } from '../componentes/AltaGasto'
 import type { Expense } from '../data/types'
 
@@ -13,6 +14,7 @@ const TODOS = '__todos__'
 
 export function Gastos() {
   const t = useTienda()
+  const avisar = useAvisar()
   const [busqueda, setBusqueda] = useState('')
   const [mes, setMes] = useState(TODOS)
   const [categoriaId, setCategoriaId] = useState(TODOS)
@@ -71,6 +73,23 @@ export function Gastos() {
     }
     return [...mapa.entries()]
   }, [filtrados])
+
+  /** Borrar nunca debe ser un callejón sin salida: siempre con vuelta atrás. */
+  function borrarConDeshacer(g: Expense) {
+    t.borrarGasto(g.id)
+      .then(() => avisar({
+        texto: `Borrado ${euros(g.importe)}`,
+        deshacer: () => t.crearGasto({
+          importe: g.importe,
+          categoriaId: g.categoriaId,
+          fecha: g.fecha,
+          nota: g.nota,
+          ticketPath: g.ticketPath,
+          origen: g.origen,
+        }),
+      }))
+      .catch(() => { /* el mensaje de error ya sale arriba */ })
+  }
 
   const hayFiltro = busqueda !== '' || mes !== TODOS || categoriaId !== TODOS
 
@@ -140,7 +159,7 @@ export function Gastos() {
             <div className="lista">
               {gastos.map((g) => (
                 <FilaGasto key={g.id} gasto={g} onPulsar={setEditando} mostrarFecha={false}
-                  onBorrar={(x) => { t.borrarGasto(x.id).catch(() => { /* el mensaje ya sale arriba */ }) }} />
+                  onBorrar={borrarConDeshacer} />
               ))}
             </div>
           </div>

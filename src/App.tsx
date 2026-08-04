@@ -9,13 +9,16 @@ import { Ajustes } from './pantallas/Ajustes'
 import { Categorias } from './pantallas/Categorias'
 import { Importar } from './pantallas/Importar'
 import { AltaGasto } from './componentes/AltaGasto'
+import { ProveedorAvisos } from './componentes/Aviso'
 import { IconoAjustes, IconoInicio, IconoLista, IconoPlan } from './componentes/Iconos'
 
 export default function App() {
   return (
     <ProveedorTienda>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Marco />
+        <ProveedorAvisos>
+          <Marco />
+        </ProveedorAvisos>
       </BrowserRouter>
     </ProveedorTienda>
   )

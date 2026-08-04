@@ -6,6 +6,7 @@ import { categoriasPorUso } from '../estado/calculos'
 import { aCentimos, euros } from '../lib/format'
 import { aISO, hoyISO } from '../lib/fechas'
 import { esPendienteDeSubir, type Expense } from '../data/types'
+import { useAvisar } from './Aviso'
 
 interface Props {
   abierta: boolean
@@ -22,6 +23,7 @@ function ayerISO(): string {
 
 export function AltaGasto({ abierta, onCerrar, gasto }: Props) {
   const t = useTienda()
+  const avisar = useAvisar()
   const editando = Boolean(gasto)
 
   const [importe, setImporte] = useState('')
@@ -106,8 +108,17 @@ export function AltaGasto({ abierta, onCerrar, gasto }: Props) {
         ticketPath,
         origen: gasto?.origen ?? ('manual' as const),
       }
-      if (gasto) await t.actualizarGasto({ ...gasto, ...campos })
-      else await t.crearGasto(campos)
+      if (gasto) {
+        const antes = gasto
+        await t.actualizarGasto({ ...gasto, ...campos })
+        avisar({
+          texto: 'Cambios guardados',
+          deshacer: () => t.actualizarGasto(antes),
+        })
+      } else {
+        await t.crearGasto(campos)
+        avisar({ texto: `Apuntado ${euros(campos.importe)}`, deshacer: deshacerUltimo })
+      }
       onCerrar()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No he podido guardar el gasto')
@@ -137,12 +148,35 @@ export function AltaGasto({ abierta, onCerrar, gasto }: Props) {
     }
   }
 
+  /**
+   * Borra lo último apuntado. Se busca por sus datos en lugar de guardar el
+   * identificador porque, sin cobertura, el gasto todavía no tiene uno.
+   */
+  async function deshacerUltimo() {
+    const reciente = t.datos.gastos.find(
+      (g) => g.importe === centimos && g.fecha === fecha && !esPendienteDeSubir(g.id),
+    )
+    if (reciente) await t.borrarGasto(reciente.id)
+  }
+
   async function borrar() {
     if (!gasto) return
     if (!confirm(`¿Borrar este gasto de ${euros(gasto.importe)}?`)) return
     setGuardando(true)
     try {
+      const borrado = gasto
       await t.borrarGasto(gasto.id)
+      avisar({
+        texto: `Borrado ${euros(borrado.importe)}`,
+        deshacer: () => t.crearGasto({
+          importe: borrado.importe,
+          categoriaId: borrado.categoriaId,
+          fecha: borrado.fecha,
+          nota: borrado.nota,
+          ticketPath: borrado.ticketPath,
+          origen: borrado.origen,
+        }),
+      })
       onCerrar()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No he podido borrar el gasto')
