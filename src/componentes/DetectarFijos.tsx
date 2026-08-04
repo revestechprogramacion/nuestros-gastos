@@ -116,7 +116,7 @@ export function DetectarFijos({ abierta, onCerrar }: Props) {
               marcado={marcados.has(c.nombre)}
               onAlternar={() => alternar(c.nombre)}
               nombreCategoria={t.categoriaPorId(c.categoriaId)?.nombre ?? 'Sin categoría'}
-              iconoCategoria={t.categoriaPorId(c.categoriaId)?.icono ?? '❓'}
+              iconoCategoria={t.categoriaPorId(c.categoriaId)?.icono ?? '·'}
               colorCategoria={t.categoriaPorId(c.categoriaId)?.color ?? '#888'}
             />
           ))}

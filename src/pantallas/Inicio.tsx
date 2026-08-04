@@ -183,8 +183,10 @@ export function Inicio() {
             {subidas.map((v) => (
               <div key={v.categoria?.id ?? 'sin'} className="fila">
                 <span className="icono icono--s" style={{
-                  background: `color-mix(in srgb, ${v.categoria?.color ?? '#888'} 22%, var(--tarjeta))`,
-                }} aria-hidden>{v.categoria?.icono ?? '❓'}</span>
+                  background: v.categoria
+                    ? `color-mix(in srgb, ${v.categoria.color} 22%, var(--tarjeta))`
+                    : 'var(--tarjeta-alt)',
+                }} aria-hidden>{v.categoria?.icono ?? '·'}</span>
                 <span className="fila__principal">
                   <span className="fila__titulo">{v.categoria?.nombre ?? 'Sin categoría'}</span>
                   <span className="fila__sub cifra">

@@ -1,5 +1,6 @@
 import { euros } from '../lib/format'
 import { etiquetaFecha } from '../lib/fechas'
+import { tituloDelGasto } from '../lib/concepto'
 import { useTienda } from '../estado/Tienda'
 import type { Expense } from '../data/types'
 
@@ -13,17 +14,20 @@ interface Props {
 export function FilaGasto({ gasto, onPulsar, mostrarFecha = true }: Props) {
   const t = useTienda()
   const cat = t.categoriaPorId(gasto.categoriaId)
+
   // Solo decimos quién lo apuntó cuando fue el otro: ver tu propio nombre en
   // cada línea es ruido.
   const otroMiembro = gasto.creadoPor && gasto.creadoPor !== t.usuario?.id
     ? t.nombreMiembro(gasto.creadoPor)
     : ''
 
-  // Sin nota, el título ya es el nombre de la categoría: no lo repetimos debajo.
-  const titulo = gasto.nota || cat?.nombre || 'Gasto'
+  // Los conceptos del banco se enseñan limpios; el original sigue guardado y
+  // se ve entero al abrir el gasto.
+  const titulo = tituloDelGasto(gasto.nota, gasto.origen, cat?.nombre ?? null)
+
   const detalles = [
     mostrarFecha ? etiquetaFecha(gasto.fecha) : null,
-    gasto.nota ? (cat?.nombre ?? 'Sin categoría') : (cat ? null : 'Sin categoría'),
+    cat?.nombre ?? 'Sin categoría',
     gasto.origen === 'fijo' ? 'fijo' : null,
     otroMiembro || null,
   ].filter(Boolean)
@@ -36,13 +40,15 @@ export function FilaGasto({ gasto, onPulsar, mostrarFecha = true }: Props) {
     >
       <span
         className="icono"
-        style={{ background: `color-mix(in srgb, ${cat?.color ?? '#888'} 22%, var(--tarjeta))` }}
+        style={cat
+          ? { background: `color-mix(in srgb, ${cat.color} 22%, var(--tarjeta))` }
+          : { background: 'var(--tarjeta-alt)' }}
         aria-hidden
       >
-        {cat?.icono ?? '❓'}
+        {cat?.icono ?? '·'}
       </span>
       <span className="fila__principal">
-        <span className="fila__titulo" style={{ display: 'block' }}>{titulo}</span>
+        <span className="fila__titulo">{titulo}</span>
         <span className="fila__sub">
           {detalles.join(' · ')}
           {gasto.ticketPath ? `${detalles.length ? ' · ' : ''}📎` : ''}

@@ -201,7 +201,7 @@ export function Importar() {
                     <span className="fila__titulo" style={{ display: 'block' }}>{c.concepto}</span>
                     <span className="fila__sub">
                       {etiquetaFecha(c.fecha)} ·{' '}
-                      {cat ? `${cat.icono} ${cat.nombre}` : '⚠️ sin categoría'}
+                      {cat ? `${cat.icono} ${cat.nombre}` : 'sin categoría — tócalo para elegirla'}
                       {c.duplicado && ' · ya existe'}
                     </span>
                   </button>

@@ -37,7 +37,7 @@ export function Desglose({ filas, onPulsar }: Props) {
           >
             <div className="entre" style={{ marginBottom: 6 }}>
               <span className="fila-flex" style={{ gap: 8, minWidth: 0 }}>
-                <span aria-hidden>{f.categoria?.icono ?? '❓'}</span>
+                <span aria-hidden>{f.categoria?.icono ?? '·'}</span>
                 <span className="fila__titulo">{nombre}</span>
               </span>
               <span className="fila-flex" style={{ gap: 8 }}>
