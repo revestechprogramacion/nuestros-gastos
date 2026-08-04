@@ -3,6 +3,7 @@ import { useTienda } from '../estado/Tienda'
 import { mesesConDatos } from '../estado/calculos'
 import { euros, normalizar } from '../lib/format'
 import { etiquetaFecha, nombreMesCapital } from '../lib/fechas'
+import { tituloDelGasto } from '../lib/concepto'
 import { FilaGasto } from '../componentes/FilaGasto'
 import { AltaGasto } from '../componentes/AltaGasto'
 import type { Expense } from '../data/types'
@@ -26,7 +27,13 @@ export function Gastos() {
         if (categoriaId !== TODOS && g.categoriaId !== categoriaId) return false
         if (!q) return true
         const cat = t.datos.categorias.find((c) => c.id === g.categoriaId)
-        const heno = normalizar(`${g.nota ?? ''} ${cat?.nombre ?? ''} ${(g.importe / 100).toFixed(2)}`)
+        // Se busca tanto por el texto del banco como por el nombre limpio que
+        // se ve en la lista: si en pantalla pone "Sanitas", buscar "sanitas"
+        // tiene que encontrarlo.
+        const titulo = tituloDelGasto(g.nota, g.origen, cat?.nombre ?? null)
+        const heno = normalizar(
+          `${g.nota ?? ''} ${titulo} ${cat?.nombre ?? ''} ${(g.importe / 100).toFixed(2)}`,
+        )
         return heno.includes(q)
       })
       .sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : b.creadoEn.localeCompare(a.creadoEn)))

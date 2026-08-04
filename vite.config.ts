@@ -50,6 +50,11 @@ export default defineConfig({
         // La app se cachea entera para que abra al instante y funcione sin
         // cobertura. Los datos NO se cachean: siempre van contra Supabase.
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        // Cuando publico una version nueva, entra YA: sin esto el movil
+        // sigue abriendo la vieja hasta que le da la gana.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         navigateFallback: `${BASE}index.html`,
         runtimeCaching: [
           {
