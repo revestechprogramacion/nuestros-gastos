@@ -3,7 +3,7 @@ import { euros } from '../lib/format'
 import { etiquetaFecha } from '../lib/fechas'
 import { tituloDelGasto } from '../lib/concepto'
 import { useTienda } from '../estado/Tienda'
-import type { Expense } from '../data/types'
+import { esPendienteDeSubir, type Expense } from '../data/types'
 
 interface Props {
   gasto: Expense
@@ -17,9 +17,13 @@ interface Props {
 /** A partir de aquí se considera que has querido deslizar, no rozar. */
 const UMBRAL_BORRAR = 72
 
-export function FilaGasto({ gasto, onPulsar, mostrarFecha = true, onBorrar }: Props) {
+export function FilaGasto({ gasto, onPulsar, mostrarFecha = true, onBorrar: borrarPedido }: Props) {
   const t = useTienda()
   const cat = t.categoriaPorId(gasto.categoriaId)
+
+  // Mientras espera a subir no se puede borrar: todavía no existe allí.
+  const pendiente = esPendienteDeSubir(gasto.id)
+  const onBorrar = pendiente ? undefined : borrarPedido
 
   /*
     Deslizar a la izquierda para borrar.
@@ -72,6 +76,7 @@ export function FilaGasto({ gasto, onPulsar, mostrarFecha = true, onBorrar }: Pr
   const detalles = [
     mostrarFecha ? etiquetaFecha(gasto.fecha) : null,
     cat?.nombre ?? 'Sin categoría',
+    pendiente ? 'esperando a subir' : null,
     gasto.origen === 'fijo' ? 'fijo' : null,
     otroMiembro || null,
   ].filter(Boolean)

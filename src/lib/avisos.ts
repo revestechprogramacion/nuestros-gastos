@@ -20,6 +20,17 @@
 
 const CLAVE_PREFERENCIA = 'nuestros-gastos:avisos'
 
+/*
+  En navegación privada de Safari, escribir en el almacén del navegador
+  lanza una excepción. Un ajuste de avisos no puede tumbar la app por eso.
+*/
+function recordar(valor: string): void {
+  try { localStorage.setItem(CLAVE_PREFERENCIA, valor) } catch { /* da igual */ }
+}
+function recordado(): string | null {
+  try { return localStorage.getItem(CLAVE_PREFERENCIA) } catch { return null }
+}
+
 export type EstadoAvisos = 'no-soportado' | 'desactivados' | 'activados' | 'bloqueados'
 
 function haySoporte(): boolean {
@@ -37,7 +48,7 @@ export function estadoAvisos(): EstadoAvisos {
   if (!haySoporte()) return 'no-soportado'
   if (Notification.permission === 'denied') return 'bloqueados'
   if (Notification.permission === 'granted') {
-    return localStorage.getItem(CLAVE_PREFERENCIA) === 'no' ? 'desactivados' : 'activados'
+    return recordado() === 'no' ? 'desactivados' : 'activados'
   }
   return 'desactivados'
 }
@@ -51,12 +62,12 @@ export async function pedirPermiso(): Promise<EstadoAvisos> {
     const respuesta = await Notification.requestPermission()
     if (respuesta !== 'granted') return respuesta === 'denied' ? 'bloqueados' : 'desactivados'
   }
-  localStorage.setItem(CLAVE_PREFERENCIA, 'si')
+  recordar('si')
   return 'activados'
 }
 
 export function desactivarAvisos(): void {
-  localStorage.setItem(CLAVE_PREFERENCIA, 'no')
+  recordar('no')
 }
 
 /**

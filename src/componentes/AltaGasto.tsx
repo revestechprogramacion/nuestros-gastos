@@ -5,7 +5,7 @@ import { useTienda } from '../estado/Tienda'
 import { categoriasPorUso } from '../estado/calculos'
 import { aCentimos, euros } from '../lib/format'
 import { aISO, hoyISO } from '../lib/fechas'
-import type { Expense } from '../data/types'
+import { esPendienteDeSubir, type Expense } from '../data/types'
 
 interface Props {
   abierta: boolean
@@ -66,7 +66,10 @@ export function AltaGasto({ abierta, onCerrar, gasto }: Props) {
   }, [ticketPath, t])
 
   const centimos = aCentimos(importe)
-  const puedeGuardar = centimos !== null && centimos > 0 && !guardando && !subiendo
+  // Un gasto que aún no ha subido no se puede modificar: en el servidor
+  // todavía no existe, así que no habría a quién enviarle el cambio.
+  const enCola = gasto !== null && gasto !== undefined && esPendienteDeSubir(gasto.id)
+  const puedeGuardar = centimos !== null && centimos > 0 && !guardando && !subiendo && !enCola
 
   // Las que más usáis, primero: con veinte categorías eso ahorra un scroll.
   const categoriasOrdenadas = useMemo(() => {
@@ -161,6 +164,13 @@ export function AltaGasto({ abierta, onCerrar, gasto }: Props) {
     >
       {error && <div className="aviso">{error}</div>}
 
+      {enCola && (
+        <div className="nota-info">
+          Este gasto se apuntó sin cobertura y está esperando a subir. En cuanto
+          vuelva la señal podrás editarlo o borrarlo.
+        </div>
+      )}
+
       <div className="importe-grande">
         <input
           ref={inputImporte}
@@ -227,7 +237,7 @@ export function AltaGasto({ abierta, onCerrar, gasto }: Props) {
           onChange={elegirFoto} style={{ display: 'none' }} />
       </div>
 
-      {editando && (
+      {editando && !enCola && (
         <>
           <button className="boton boton--secundario" style={{ marginTop: 8 }} onClick={repetirHoy}>
             🔁  Repetir este gasto hoy

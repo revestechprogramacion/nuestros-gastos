@@ -151,3 +151,11 @@ describe('patronDesdeConcepto', () => {
       .toBe('iberdrola clientes')
   })
 })
+
+describe('gastos pendientes de subir', () => {
+  it('se reconocen por su identificador provisional', async () => {
+    const { esPendienteDeSubir } = await import('../../data/types')
+    expect(esPendienteDeSubir('pendiente-0')).toBe(true)
+    expect(esPendienteDeSubir('a35ac5f4-fb95-42b3-bd5f-71c742880f96')).toBe(false)
+  })
+})

@@ -212,7 +212,7 @@ export function Ajustes() {
       )}
 
       <button className="boton boton--peligro" style={{ marginTop: 20 }}
-        onClick={() => { void t.salir() }}>
+        onClick={() => { t.salir().catch(() => { /* cerrar sesión no puede fallar hacia el usuario */ }) }}>
         Cerrar sesión
       </button>
 

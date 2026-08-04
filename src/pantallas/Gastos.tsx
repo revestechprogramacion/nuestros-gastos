@@ -140,7 +140,7 @@ export function Gastos() {
             <div className="lista">
               {gastos.map((g) => (
                 <FilaGasto key={g.id} gasto={g} onPulsar={setEditando} mostrarFecha={false}
-                  onBorrar={(x) => { void t.borrarGasto(x.id) }} />
+                  onBorrar={(x) => { t.borrarGasto(x.id).catch(() => { /* el mensaje ya sale arriba */ }) }} />
               ))}
             </div>
           </div>

@@ -27,7 +27,14 @@ export interface Category {
 
 export type ExpenseSource = 'manual' | 'csv' | 'fijo'
 
+/**
+ * Los gastos apuntados sin cobertura llevan un identificador provisional
+ * hasta que suben. Editarlos o borrarlos no tendría a quién dirigirse.
+ */
+export const esPendienteDeSubir = (id: string) => id.startsWith('pendiente-')
+
 export interface Expense {
+  /** Provisional mientras el gasto está en la cola: ver `esPendienteDeSubir`. */
   id: ID
   importe: number // céntimos, siempre positivo
   categoriaId: ID | null

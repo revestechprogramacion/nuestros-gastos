@@ -97,7 +97,9 @@ export class SupabaseRepo implements Repo {
   constructor() {
     // Al recuperar la señal, vaciamos la cola sin que nadie haga nada.
     if (typeof window !== 'undefined') {
-      window.addEventListener('online', () => { void this.vaciarCola() })
+      window.addEventListener('online', () => {
+        this.vaciarCola().catch(() => { /* se reintenta la próxima vez */ })
+      })
     }
   }
 
@@ -206,6 +208,9 @@ export class SupabaseRepo implements Repo {
       throw e
     }
   }
+
+  /** Los que aún no han subido llevan este prefijo en el identificador. */
+  static esPendiente = (id: string) => id.startsWith('pendiente-')
 
   /** Mete en la lista los gastos que están esperando a subir. */
   private conPendientes(snap: Snapshot): Snapshot {
