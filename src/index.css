@@ -729,7 +729,9 @@ p { margin: 0; }
   background: linear-gradient(to top, var(--fondo) 72%, transparent);
 }
 
-/* Deslizar para borrar: el fondo rojo asoma solo mientras se arrastra. */
+/* Deslizar para borrar: el fondo rojo asoma solo mientras se arrastra.
+   La fila TIENE que llevar fondo propio: en la lista es transparente
+   —el blanco lo pone la tarjeta— y sin él el rojo se ve siempre. */
 .fila-deslizable { position: relative; overflow: hidden; }
 
 .fila-deslizable__fondo {
@@ -743,9 +745,15 @@ p { margin: 0; }
   color: #fff;
   font-size: 14px;
   font-weight: 600;
+  letter-spacing: .01em;
 }
 
-.fila-deslizable > .fila { position: relative; }
+.fila-deslizable > .fila {
+  position: relative;
+  background: var(--tarjeta);
+}
+
+.fila-deslizable > .fila:active { background: var(--tarjeta-alt); }
 
 /* Tirador de la hoja: la señal universal de "puedes bajarme". */
 .hoja__tirador {
