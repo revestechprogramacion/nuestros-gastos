@@ -75,7 +75,9 @@ export function FilaGasto({ gasto, onPulsar, mostrarFecha = true, onBorrar: borr
 
   const detalles = [
     mostrarFecha ? etiquetaFecha(gasto.fecha) : null,
-    cat?.nombre ?? 'Sin categoría',
+    // Sin nota, el título YA es el nombre de la categoría: repetirlo debajo
+    // daba lugar a filas que ponían "Casa" y justo abajo "Casa".
+    titulo === cat?.nombre ? null : (cat?.nombre ?? 'Sin categoría'),
     pendiente ? 'esperando a subir' : null,
     gasto.origen === 'fijo' ? 'fijo' : null,
     otroMiembro || null,

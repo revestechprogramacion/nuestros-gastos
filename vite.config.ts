@@ -21,7 +21,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['iconos/apple-touch-icon.png', 'iconos/arranque-*.png'],
+      includeAssets: ['iconos/apple-touch-icon.png'],
       manifest: {
         name: 'Nuestros Gastos',
         short_name: 'Gastos',
@@ -50,7 +50,10 @@ export default defineConfig({
       workbox: {
         // La app se cachea entera para que abra al instante y funcione sin
         // cobertura. Los datos NO se cachean: siempre van contra Supabase.
-        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,woff2}', 'iconos/icono-*.png'],
+        // Las pantallas de arranque pesan 132 KB y iOS solo las necesita al
+        // instalar el icono. Precargarlas retrasaba la primera pantalla.
+        globIgnores: ['**/arranque-*.png'],
         // Cuando publico una version nueva, entra YA: sin esto el movil
         // sigue abriendo la vieja hasta que le da la gana.
         skipWaiting: true,
