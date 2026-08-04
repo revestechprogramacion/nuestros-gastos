@@ -11,6 +11,7 @@ import { BarrasMeses } from '../componentes/BarrasMeses'
 import { Desglose } from '../componentes/Desglose'
 import { FilaGasto } from '../componentes/FilaGasto'
 import { AltaGasto } from '../componentes/AltaGasto'
+import { diasSinApuntar } from '../lib/avisos'
 import type { Expense } from '../data/types'
 
 export function Inicio() {
@@ -78,6 +79,12 @@ export function Inicio() {
     [gastos, hoy],
   )
 
+  // Los gastos generados solos no cuentan: la idea es saber si HABÉIS
+  // apuntado, no si el banco ha cobrado.
+  const diasParados = useMemo(() => diasSinApuntar(
+    t.datos.gastos.filter((g) => g.origen !== 'fijo').map((g) => g.fecha), hoy,
+  ), [t.datos.gastos, hoy])
+
   return (
     <>
       <div className="cabecera">
@@ -134,6 +141,13 @@ export function Inicio() {
               ? 'Todavía no habéis gastado nada'
               : `${gastosDeHoy} ${gastosDeHoy === 1 ? 'gasto' : 'gastos'} apuntados`}
           </span>
+        </div>
+      )}
+
+      {diasParados !== null && diasParados >= 4 && (
+        <div className="nota-info">
+          Lleváis <strong>{diasParados} días</strong> sin apuntar nada. Si se os
+          ha pasado alguno, cuanto antes lo metáis, más fiables serán los números.
         </div>
       )}
 

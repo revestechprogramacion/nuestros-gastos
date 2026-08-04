@@ -163,3 +163,52 @@ for (const s of salidas) {
   writeFileSync(join(DESTINO, s.archivo), aPng(dibujar(s.lado, s.sangre), s.lado, s.lado))
   console.log(`✓ ${s.archivo} (${s.lado}×${s.lado})`)
 }
+
+// ---------------------- pantallas de arranque -------------------------
+//
+// iOS no usa el manifiesto para la pantalla de carga: exige una imagen por
+// cada tamaño de pantalla. Sin ellas, al abrir la app desde el icono se ve
+// un destello blanco. Son fondos lisos con el logo centrado.
+
+const PANTALLAS = [
+  { archivo: 'arranque-1290x2796.png', w: 1290, h: 2796 }, // 15/16 Pro Max
+  { archivo: 'arranque-1179x2556.png', w: 1179, h: 2556 }, // 15/16 Pro
+  { archivo: 'arranque-1284x2778.png', w: 1284, h: 2778 }, // 12/13/14 Pro Max
+  { archivo: 'arranque-1170x2532.png', w: 1170, h: 2532 }, // 12/13/14
+  { archivo: 'arranque-1125x2436.png', w: 1125, h: 2436 }, // X / XS / 11 Pro
+  { archivo: 'arranque-828x1792.png', w: 828, h: 1792 },   // XR / 11
+  { archivo: 'arranque-750x1334.png', w: 750, h: 1334 },   // SE / 8
+]
+
+function dibujarArranque(w, h) {
+  const px = Buffer.alloc(w * h * 4)
+  for (let i = 0; i < w * h; i++) {
+    px[i * 4] = 255; px[i * 4 + 1] = 255; px[i * 4 + 2] = 255; px[i * 4 + 3] = 255
+  }
+
+  // El mismo gráfico de tres barras del icono, centrado y a escala.
+  const lado = Math.round(Math.min(w, h) * 0.26)
+  const x0 = Math.round((w - lado) / 2)
+  const y0 = Math.round((h - lado) / 2)
+  const icono = dibujar(lado, false)
+
+  for (let y = 0; y < lado; y++) {
+    for (let x = 0; x < lado; x++) {
+      const o = (y * lado + x) * 4
+      const alfa = icono[o + 3] / 255
+      if (alfa === 0) continue
+      const d = ((y0 + y) * w + (x0 + x)) * 4
+      // Mezclado sobre el blanco, para que las esquinas redondeadas no corten.
+      px[d] = icono[o] * alfa + 255 * (1 - alfa)
+      px[d + 1] = icono[o + 1] * alfa + 255 * (1 - alfa)
+      px[d + 2] = icono[o + 2] * alfa + 255 * (1 - alfa)
+      px[d + 3] = 255
+    }
+  }
+  return px
+}
+
+for (const p of PANTALLAS) {
+  writeFileSync(join(DESTINO, p.archivo), aPng(dibujarArranque(p.w, p.h), p.w, p.h))
+  console.log(`✓ ${p.archivo}`)
+}

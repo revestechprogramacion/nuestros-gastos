@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import { useTienda } from '../estado/Tienda'
 import { euros } from '../lib/format'
 import { IconoChevron } from '../componentes/Iconos'
+import {
+  desactivarAvisos, estadoAvisos, estaInstalada, pedirPermiso, type EstadoAvisos,
+} from '../lib/avisos'
 
 export function Ajustes() {
   const t = useTienda()
@@ -10,32 +13,24 @@ export function Ajustes() {
   const sinCategoria = t.datos.gastos.filter((g) => g.categoriaId === null)
   const [repasando, setRepasando] = useState(false)
   const [resultadoRepaso, setResultadoRepaso] = useState<string | null>(null)
-  const [subiendo, setSubiendo] = useState(false)
-  const dePrueba = t.modo === 'nube' ? t.gastosDePrueba() : 0
+  const [avisos, setAvisos] = useState<EstadoAvisos>(() => estadoAvisos())
 
-  async function subirPrueba() {
-    if (!confirm(
-      `Se subirán a la nube los ${dePrueba} gastos que hiciste en la versión de prueba `
-      + 'de este navegador.\n\nLos que ya estén subidos no se duplican. ¿Seguimos?',
-    )) return
-
-    setSubiendo(true)
-    setResultadoRepaso(null)
-    try {
-      const r = await t.subirDatosDePrueba()
-      const partes = [
-        `${r.gastos} gastos subidos`,
-        r.categorias > 0 && `${r.categorias} categorías`,
-        r.fijos > 0 && `${r.fijos} gastos fijos`,
-        r.reglas > 0 && `${r.reglas} reglas`,
-        r.omitidos > 0 && `${r.omitidos} ya estaban`,
-      ].filter(Boolean)
-      setResultadoRepaso(partes.join(' · '))
-    } catch (e) {
-      setResultadoRepaso(e instanceof Error ? e.message : 'No he podido subirlos')
-    } finally {
-      setSubiendo(false)
+  async function alternarAvisos() {
+    if (avisos === 'activados') {
+      desactivarAvisos()
+      setAvisos('desactivados')
+      return
     }
+    setAvisos(await pedirPermiso())
+  }
+
+  const textoAvisos: Record<EstadoAvisos, string> = {
+    'activados': 'Te avisamos cuando el otro apunte un gasto',
+    'desactivados': estaInstalada()
+      ? 'Apagados. Tócalo para que te avise cuando el otro apunte algo'
+      : 'Para que funcionen en el iPhone, añade antes la app a la pantalla de inicio',
+    'bloqueados': 'Los bloqueaste. Se reactivan en Ajustes del iPhone → Nuestros Gastos',
+    'no-soportado': 'Este navegador no admite avisos',
   }
 
   async function repasar() {
@@ -54,6 +49,33 @@ export function Ajustes() {
     } finally {
       setRepasando(false)
     }
+  }
+
+  /** Descarga todo, tal cual, para poder volver atrás si algo saliera mal. */
+  function copiaDeSeguridad() {
+    const copia = {
+      version: 1,
+      generada: new Date().toISOString(),
+      casa: t.datos.miembros,
+      categorias: t.datos.categorias,
+      gastos: t.datos.gastos,
+      presupuestos: t.datos.presupuestos,
+      fijos: t.datos.fijos,
+      reglas: t.datos.reglas,
+    }
+    descargar(
+      new Blob([JSON.stringify(copia, null, 1)], { type: 'application/json' }),
+      `copia-nuestros-gastos-${new Date().toISOString().slice(0, 10)}.json`,
+    )
+  }
+
+  function descargar(blob: Blob, nombre: string) {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombre
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   function exportar() {
@@ -128,20 +150,6 @@ export function Ajustes() {
           </span>
           <IconoChevron />
         </Link>
-        {dePrueba > 0 && (
-          <button className="fila" onClick={subirPrueba} disabled={subiendo}>
-            <span className="icono" style={{ background: 'var(--tarjeta-alt)' }} aria-hidden>☁️</span>
-            <span className="fila__principal">
-              <span className="fila__titulo">
-                {subiendo ? 'Subiendo…' : 'Subir los datos de la prueba'}
-              </span>
-              <span className="fila__sub">
-                {dePrueba} gastos guardados en este navegador, aún sin subir
-              </span>
-            </span>
-            <IconoChevron />
-          </button>
-        )}
         <button className="fila" onClick={repasar} disabled={repasando}>
           <span className="icono" style={{ background: 'var(--tarjeta-alt)' }} aria-hidden>🪄</span>
           <span className="fila__principal">
@@ -164,9 +172,36 @@ export function Ajustes() {
           </span>
           <IconoChevron />
         </button>
+        <button className="fila" onClick={copiaDeSeguridad}>
+          <span className="icono" style={{ background: 'var(--tarjeta-alt)' }} aria-hidden>🗄️</span>
+          <span className="fila__principal">
+            <span className="fila__titulo">Copia de seguridad</span>
+            <span className="fila__sub">Un archivo con absolutamente todo, por si acaso</span>
+          </span>
+          <IconoChevron />
+        </button>
       </div>
 
       {resultadoRepaso && <div className="nota-info" style={{ marginTop: 12 }}>{resultadoRepaso}</div>}
+
+      <p className="epigrafe">Avisos</p>
+      <div className="lista">
+        <button className="fila" onClick={alternarAvisos}
+          disabled={avisos === 'no-soportado' || avisos === 'bloqueados'}
+          aria-pressed={avisos === 'activados'}>
+          <span className="icono" style={{ background: 'var(--tarjeta-alt)' }} aria-hidden>🔔</span>
+          <span className="fila__principal">
+            <span className="fila__titulo">Avisarme de los gastos del otro</span>
+            <span className="fila__sub">{textoAvisos[avisos]}</span>
+          </span>
+          <span style={{ fontSize: 22 }} aria-hidden>{avisos === 'activados' ? '✅' : '⬜️'}</span>
+        </button>
+      </div>
+      <p className="peque tenue" style={{ margin: '8px 4px 0' }}>
+        Llegan con la app abierta o recién usada. Con el móvil guardado y la app
+        cerrada del todo aún no: eso necesita un servidor de notificaciones,
+        que se puede añadir cuando quieras.
+      </p>
 
       {t.modo === 'local' && (
         <div className="nota-info" style={{ marginTop: 12 }}>

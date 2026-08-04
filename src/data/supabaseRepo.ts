@@ -280,9 +280,11 @@ export class SupabaseRepo implements Repo {
     }
   }
 
-  async crearGasto(g: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>): Promise<Expense> {
+  async crearGasto(g: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>): Promise<Expense | null> {
     const [creado] = await this.crearGastos([g])
-    return creado
+    // Sin cobertura se queda en la cola y todavía no tiene identificador:
+    // devolver null lo dice claro en vez de un `undefined` a traición.
+    return creado ?? null
   }
 
   async crearGastos(gs: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>[]): Promise<Expense[]> {

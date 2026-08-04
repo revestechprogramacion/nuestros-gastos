@@ -21,7 +21,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['iconos/apple-touch-icon.png'],
+      includeAssets: ['iconos/apple-touch-icon.png', 'iconos/arranque-*.png'],
       manifest: {
         name: 'Nuestros Gastos',
         short_name: 'Gastos',
@@ -32,6 +32,7 @@ export default defineConfig({
         scope: BASE,
         id: BASE,
         display: 'standalone',
+        categories: ['finance', 'productivity'],
         orientation: 'portrait',
         background_color: '#ffffff',
         theme_color: '#ffffff',

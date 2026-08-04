@@ -23,7 +23,8 @@ export interface Repo {
   escucharCambios(cb: () => void): () => void
 
   // --- Gastos ---
-  crearGasto(g: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>): Promise<Expense>
+  /** null si no había cobertura y se ha quedado en la cola. */
+  crearGasto(g: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>): Promise<Expense | null>
   crearGastos(gs: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>[]): Promise<Expense[]>
   actualizarGasto(g: Expense): Promise<Expense>
   /** Actualiza muchos de golpe (repaso de categorías, importaciones). */

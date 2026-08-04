@@ -83,9 +83,9 @@ export class LocalRepo implements Repo {
     return () => this.oyentes.delete(cb)
   }
 
-  async crearGasto(g: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>): Promise<Expense> {
+  async crearGasto(g: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>): Promise<Expense | null> {
     const [creado] = await this.crearGastos([g])
-    return creado
+    return creado ?? null
   }
 
   async crearGastos(gs: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>[]): Promise<Expense[]> {

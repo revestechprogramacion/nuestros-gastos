@@ -4,9 +4,10 @@ import {
 } from 'react'
 import { getRepo, type Repo } from '../data/repo'
 import { CATEGORIAS_INICIALES } from '../data/seed'
-import { HISTORICO, hayHistoricoQueRestaurar, mapaDeCategorias } from '../data/restaurar'
 import { sugerirCategoria } from '../lib/categorizar'
 import { diaEfectivo } from '../lib/periodicos'
+import { avisar } from '../lib/avisos'
+import { euros } from '../lib/format'
 import { SNAPSHOT_VACIO, type Budget, type Category, type Expense, type ImportRule, type Recurring, type SessionUser, type Snapshot } from '../data/types'
 import { aISO, desplazarMes, hoyISO, mesActual, mesDe } from '../lib/fechas'
 
@@ -31,10 +32,6 @@ interface Tienda {
   /** Vuelve a intentar categorizar los gastos que quedaron sin categoría. */
   repasarSinCategoria: () => Promise<{ categoriasNuevas: number; recategorizados: number }>
 
-  /** Cuántos gastos quedaron en la versión de prueba de este navegador. */
-  gastosDePrueba: () => number
-  /** Sube a la nube lo que se hizo en la versión de prueba de este navegador. */
-  subirDatosDePrueba: () => Promise<ResumenMigracion>
 
   guardarCategoria: (c: Omit<Category, 'id'> & { id?: string }) => Promise<void>
   borrarCategoria: (id: string) => Promise<void>
@@ -53,29 +50,7 @@ interface Tienda {
   nombreMiembro: (id: string | null) => string
 }
 
-export interface ResumenMigracion {
-  gastos: number
-  categorias: number
-  fijos: number
-  reglas: number
-  /** Los que ya estaban subidos y no se han duplicado. */
-  omitidos: number
-}
 
-/**
- * Lee lo que quedó guardado por la versión de prueba en ESTE navegador.
- * Cuando la app pasó a la nube, esos datos siguieron ahí sin tocar.
- */
-function leerDatosDePrueba(): Snapshot | null {
-  try {
-    const crudo = localStorage.getItem('nuestros-gastos:local:v1')
-    if (!crudo) return null
-    const a = JSON.parse(crudo) as Snapshot
-    return a.gastos?.length ? a : null
-  } catch {
-    return null
-  }
-}
 
 const Contexto = createContext<Tienda | null>(null)
 
@@ -124,10 +99,35 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
     return () => { vivo = false }
   }, [recargarCon])
 
-  // Sincronización: si el otro móvil cambia algo, recargamos.
+  // Sincronización: si el otro móvil cambia algo, recargamos y avisamos.
+  const vistos = useRef<Set<string> | null>(null)
   useEffect(() => {
     if (!repo || !usuario) return
-    return repo.escucharCambios(() => { void recargarCon(repo) })
+    return repo.escucharCambios(async () => {
+      const snap = await recargarCon(repo)
+      if (!snap) return
+
+      // La primera vuelta solo toma nota de lo que ya había: si no, al abrir
+      // la app saltarían avisos de gastos de hace meses.
+      if (vistos.current === null) {
+        vistos.current = new Set(snap.gastos.map((g) => g.id))
+        return
+      }
+
+      const nuevos = snap.gastos.filter(
+        (g) => !vistos.current!.has(g.id) && g.creadoPor && g.creadoPor !== usuario.id,
+      )
+      snap.gastos.forEach((g) => vistos.current!.add(g.id))
+
+      if (nuevos.length === 1) {
+        const g = nuevos[0]
+        const quien = snap.miembros.find((m) => m.id === g.creadoPor)?.nombre ?? 'En casa'
+        void avisar(`${quien} ha apuntado un gasto`, `${euros(g.importe)} · ${g.nota ?? 'sin nota'}`, 'gasto-nuevo')
+      } else if (nuevos.length > 1) {
+        const total = nuevos.reduce((t, g) => t + g.importe, 0)
+        void avisar('Gastos nuevos en casa', `${nuevos.length} gastos · ${euros(total)}`, 'gasto-nuevo')
+      }
+    })
   }, [repo, usuario, recargarCon])
 
   /**
@@ -150,6 +150,21 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
       },
     [repo, recargarCon],
   )
+
+  /**
+   * Cambia el estado en el sitio, sin volver a pedirlo todo al servidor.
+   *
+   * Apuntar un gasto obligaba antes a recargar las seis tablas enteras: con
+   * cientos de movimientos eso son cientos de kilobytes y un parpadeo en la
+   * pantalla por cada toque. Ahora el servidor confirma la fila y se coloca
+   * donde toca; la recarga completa queda para cuando de verdad hace falta.
+   */
+  const aplicar = useCallback((cambio: (s: Snapshot) => Snapshot) => {
+    setDatos((previo) => cambio(previo))
+  }, [])
+
+  const porFecha = (a: Expense, b: Expense) =>
+    (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : b.creadoEn.localeCompare(a.creadoEn))
 
   const valor = useMemo<Tienda>(() => ({
     cargando,
@@ -208,87 +223,64 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
       return { categoriasNuevas: queFaltan.length, recategorizados: arreglados.length }
     },
 
-    gastosDePrueba: () => leerDatosDePrueba()?.gastos.length ?? 0,
 
-    subirDatosDePrueba: async () => {
+    crearGasto: async (g) => {
       const r = repo ?? (await getRepo())
-      const local = leerDatosDePrueba()
-      const vacio: ResumenMigracion = { gastos: 0, categorias: 0, fijos: 0, reglas: 0, omitidos: 0 }
-      if (!local) return vacio
-
-      // Las categorías de allí y de aquí tienen identificadores distintos:
-      // el puente entre unas y otras es el nombre.
-      let snap = datos
-      const porNombre = () => new Map(snap.categorias.map((c) => [c.nombre, c.id]))
-      let mapa = porNombre()
-
-      let categoriasNuevas = 0
-      for (const c of local.categorias) {
-        if (mapa.has(c.nombre)) continue
-        const { id: _id, ...sinId } = c
-        await r.guardarCategoria(sinId)
-        categoriasNuevas++
+      try {
+        const creados = await r.crearGastos([g])
+        // Sin cobertura el repositorio lo encola y no devuelve nada: entonces
+        // sí recargamos, porque la copia local ya incluye los pendientes.
+        if (creados.length > 0) aplicar((s) => ({ ...s, gastos: [...creados, ...s.gastos].sort(porFecha) }))
+        else await recargarCon(r)
+        setError(null)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'No he podido guardar el gasto')
+        throw e
       }
-      if (categoriasNuevas > 0) {
-        snap = (await recargarCon(r)) ?? snap
-        mapa = porNombre()
-      }
-
-      const nombreLocal = new Map(local.categorias.map((c) => [c.id, c.nombre]))
-      const aquiId = (idLocal: string | null) =>
-        (idLocal && mapa.get(nombreLocal.get(idLocal) ?? '')) ?? null
-
-      // No repetimos lo que ya esté subido: mismo día, mismo importe, mismo concepto.
-      const huella = (g: { fecha: string; importe: number; nota: string | null }) =>
-        `${g.fecha}|${g.importe}|${g.nota ?? ''}`
-      const yaEstan = new Set(snap.gastos.map(huella))
-
-      const porSubir = local.gastos.filter((g) => !yaEstan.has(huella(g)))
-      const omitidos = local.gastos.length - porSubir.length
-
-      // En tandas, que son cientos y una petición gigante se cae entera.
-      for (let i = 0; i < porSubir.length; i += 100) {
-        await r.crearGastos(porSubir.slice(i, i + 100).map((g) => ({
-          importe: g.importe,
-          categoriaId: aquiId(g.categoriaId),
-          fecha: g.fecha,
-          nota: g.nota,
-          ticketPath: null, // las fotos de la prueba viven solo en este navegador
-          origen: g.origen,
-        })))
-      }
-
-      const fijosAqui = new Set(snap.fijos.map((f) => f.nombre))
-      let fijos = 0
-      for (const f of local.fijos) {
-        if (fijosAqui.has(f.nombre)) continue
-        const { id: _id, ...sinId } = f
-        await r.guardarFijo({ ...sinId, categoriaId: aquiId(f.categoriaId) })
-        fijos++
-      }
-
-      const reglasAqui = new Set(snap.reglas.map((x) => x.patron))
-      let reglas = 0
-      for (const x of local.reglas) {
-        const destino = aquiId(x.categoriaId)
-        if (!destino || reglasAqui.has(x.patron)) continue
-        await r.guardarRegla({ patron: x.patron, categoriaId: destino, aciertos: x.aciertos })
-        reglas++
-      }
-
-      for (const p of local.presupuestos) {
-        const destino = aquiId(p.categoriaId)
-        if (destino) await r.guardarPresupuesto({ categoriaId: destino, importe: p.importe })
-      }
-
-      await recargarCon(r)
-      return { gastos: porSubir.length, categorias: categoriasNuevas, fijos, reglas, omitidos }
     },
 
-    crearGasto: accion((r, g: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>) => r.crearGasto(g)),
-    crearGastos: accion((r, gs: Omit<Expense, 'id' | 'creadoEn' | 'creadoPor'>[]) => r.crearGastos(gs)),
-    actualizarGasto: accion((r, g: Expense) => r.actualizarGasto(g)),
-    borrarGasto: accion((r, id: string) => r.borrarGasto(id)),
+    crearGastos: async (gs) => {
+      const r = repo ?? (await getRepo())
+      try {
+        const creados = await r.crearGastos(gs)
+        if (creados.length === gs.length) {
+          aplicar((s) => ({ ...s, gastos: [...creados, ...s.gastos].sort(porFecha) }))
+        } else {
+          await recargarCon(r)
+        }
+        setError(null)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'No he podido guardar los gastos')
+        throw e
+      }
+    },
+
+    actualizarGasto: async (g) => {
+      const r = repo ?? (await getRepo())
+      try {
+        const nuevo = await r.actualizarGasto(g)
+        aplicar((s) => ({
+          ...s,
+          gastos: s.gastos.map((x) => (x.id === nuevo.id ? nuevo : x)).sort(porFecha),
+        }))
+        setError(null)
+      } catch (e) {
+        setError(traducirSinConexion(e, 'editar un gasto'))
+        throw e
+      }
+    },
+
+    borrarGasto: async (id) => {
+      const r = repo ?? (await getRepo())
+      try {
+        await r.borrarGasto(id)
+        aplicar((s) => ({ ...s, gastos: s.gastos.filter((x) => x.id !== id) }))
+        setError(null)
+      } catch (e) {
+        setError(traducirSinConexion(e, 'borrar un gasto'))
+        throw e
+      }
+    },
 
     guardarCategoria: accion((r, c: Omit<Category, 'id'> & { id?: string }) => r.guardarCategoria(c)),
     borrarCategoria: accion((r, id: string) => r.borrarCategoria(id)),
@@ -311,7 +303,7 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
 
     categoriaPorId: (id) => datos.categorias.find((c) => c.id === id) ?? null,
     nombreMiembro: (id) => datos.miembros.find((m) => m.id === id)?.nombre ?? '',
-  }), [cargando, error, usuario, repo, datos, accion, recargarCon])
+  }), [cargando, error, usuario, repo, datos, accion, recargarCon, aplicar])
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>
 }
@@ -336,12 +328,6 @@ async function sembrarYGenerar(
       actual = (await recargar(repo)) ?? actual
     }
 
-    // Casa recién estrenada y hay histórico esperando: lo subimos ahora, sin
-    // que nadie tenga que pedirlo. Solo ocurre una vez, con la casa vacía.
-    if (actual.gastos.length === 0 && hayHistoricoQueRestaurar()) {
-      await restaurarHistorico(repo, actual)
-      actual = (await recargar(repo)) ?? actual
-    }
     const creados = await generarFijos(repo, actual)
     if (creados > 0) await recargar(repo)
   } finally {
@@ -349,39 +335,18 @@ async function sembrarYGenerar(
   }
 }
 
-/** Sube el histórico que viaja con la app a una casa que aún está vacía. */
-async function restaurarHistorico(repo: Repo, snap: Snapshot): Promise<void> {
-  const porNombre = mapaDeCategorias(snap.categorias)
-  const id = (nombre: string) => porNombre.get(nombre) ?? null
 
-  // En tandas: son cientos y una petición gigante se cae entera.
-  const gastos = HISTORICO.gastos.map((g) => ({
-    importe: g.importe,
-    categoriaId: id(g.categoria),
-    fecha: g.fecha,
-    nota: g.nota,
-    ticketPath: null,
-    origen: g.origen,
-  }))
-  for (let i = 0; i < gastos.length; i += 100) {
-    await repo.crearGastos(gastos.slice(i, i + 100))
+/**
+ * Apuntar un gasto sin cobertura funciona (se encola). Editar o borrar no:
+ * habría que decidir quién gana si el otro móvil tocó lo mismo, y eso genera
+ * más problemas de los que resuelve. Mejor decirlo claro.
+ */
+function traducirSinConexion(e: unknown, accion: string): string {
+  const m = e instanceof Error ? e.message : String(e)
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return `Sin conexión no se puede ${accion}. Apuntar gastos nuevos sí funciona: se suben solos al volver la señal.`
   }
-
-  for (const f of HISTORICO.fijos) {
-    await repo.guardarFijo({
-      nombre: f.nombre,
-      importe: f.importe,
-      categoriaId: id(f.categoria),
-      diaDelMes: f.diaDelMes,
-      activo: true,
-      ultimoMesGenerado: f.ultimoMesGenerado,
-    })
-  }
-
-  for (const r of HISTORICO.reglas) {
-    const destino = id(r.categoria)
-    if (destino) await repo.guardarRegla({ patron: r.patron, categoriaId: destino, aciertos: 1 })
-  }
+  return m
 }
 
 /** Crea los gastos de los fijos activos cuyo día ya ha pasado y no se generaron. */
