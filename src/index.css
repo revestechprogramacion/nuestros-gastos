@@ -1,0 +1,720 @@
+/* =====================================================================
+   Nuestros Gastos — blanco y rojo
+   Pensado para iPhone: tipografía del sistema, área segura del notch y
+   objetivos táctiles de 44px.
+
+   Fondo blanco, mucho aire y un único acento rojo. El tema es siempre
+   claro, a propósito: así la app se ve igual en los dos móviles y los
+   números destacan sobre el papel en blanco.
+   ===================================================================== */
+
+:root {
+  color-scheme: light;
+
+  --fondo: #ffffff;
+  --tarjeta: #ffffff;
+  --tarjeta-alt: #f4f4f6;
+  --borde: #e8e8ee;
+
+  --texto: #0b0b0f;
+  --texto-suave: #6a6a76;
+  --texto-tenue: #9a9aa6;
+
+  /* El rojo es la marca y también el dato: las barras del gasto van en él.
+     Este tono llega a 4,8:1 sobre blanco, así que también vale para texto. */
+  --rojo: #e11d2e;
+  --rojo-vivo: #ff3b4a;
+  --rojo-claro: #ff6b78;
+  --rojo-hondo: #9f0f1e;
+  --acento: var(--rojo);
+  --acento-suave: #fff1f2;
+
+  --peligro: #e11d2e;
+  --bien: #0b0b0f;
+  --aviso: #b45309;
+
+  --pista: #eeeef2;
+  --sombra: 0 1px 2px rgba(16, 16, 24, .05), 0 10px 30px rgba(16, 16, 24, .05);
+
+  --r: 18px;
+  --seguro-abajo: env(safe-area-inset-bottom, 0px);
+  --seguro-arriba: env(safe-area-inset-top, 0px);
+  --alto-barra: 56px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: none; background: none; padding: 0; }
+a { color: inherit; text-decoration: none; }
+a.boton--texto { color: var(--acento); }
+
+h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -.03em; }
+h1 { font-size: 30px; }
+h2 { font-size: 20px; }
+h3 { font-size: 16px; }
+p { margin: 0; }
+
+/* Cifras de ancho fijo para que los números no bailen al actualizarse. */
+.cifra { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+/* --------------------------- Estructura --------------------------- */
+
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.contenido {
+  flex: 1;
+  padding: 0 18px;
+  padding-bottom: calc(var(--alto-barra) + var(--seguro-abajo) + 28px);
+}
+
+.cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: calc(var(--seguro-arriba) + 16px) 18px 12px;
+  margin: 0 -18px 10px;
+  background: color-mix(in srgb, var(--fondo) 94%, transparent);
+  backdrop-filter: saturate(140%) blur(18px);
+  -webkit-backdrop-filter: saturate(140%) blur(18px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cabecera h1 { font-size: 28px; }
+
+/* --------------------------- Tarjetas ----------------------------- */
+
+.tarjeta {
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--r);
+  box-shadow: var(--sombra);
+  padding: 18px;
+  margin-bottom: 12px;
+}
+
+/* La tarjeta del titular lleva un rescoldo rojo detrás. */
+.tarjeta--hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(130% 110% at 0% 0%, rgba(225, 29, 46, .10) 0%, transparent 62%),
+    var(--tarjeta);
+  border-color: #f7d9dc;
+}
+
+.lista {
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--r);
+  box-shadow: var(--sombra);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 13px 16px;
+  min-height: 58px;
+  text-align: left;
+  border-bottom: 1px solid var(--borde);
+  background: transparent;
+  transition: background .12s;
+}
+
+.fila:last-child { border-bottom: none; }
+.fila:active { background: var(--tarjeta-alt); }
+
+.fila__principal { flex: 1; min-width: 0; }
+
+.fila__titulo {
+  display: block;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fila__sub { display: block; font-size: 13px; color: var(--texto-suave); margin-top: 1px; }
+.fila__importe { font-weight: 600; white-space: nowrap; }
+
+/* Ficha redonda con el emoji de la categoría */
+.icono {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+  flex-shrink: 0;
+  background: var(--tarjeta-alt);
+}
+
+.icono--s { width: 30px; height: 30px; border-radius: 10px; font-size: 15px; }
+
+/* ------------------------- Encabezados ---------------------------- */
+
+.epigrafe {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--texto-tenue);
+  margin: 26px 4px 10px;
+}
+
+.separador-fecha {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--texto-tenue);
+  padding: 16px 4px 7px;
+}
+
+/* --------------------------- Botones ------------------------------ */
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 14px;
+  background: var(--rojo);
+  color: #fff;
+  font-weight: 600;
+  width: 100%;
+  transition: opacity .12s, transform .12s;
+}
+
+.boton:active { transform: scale(.985); opacity: .85; }
+.boton:disabled { opacity: .3; transform: none; }
+
+.boton--secundario {
+  background: transparent;
+  border: 1px solid var(--borde);
+  color: var(--texto);
+}
+
+.boton--peligro { background: transparent; color: var(--rojo); }
+
+.boton--texto {
+  background: none;
+  color: var(--acento);
+  min-height: 44px;
+  width: auto;
+  padding: 0 4px;
+  font-weight: 500;
+}
+
+/* --------------------- Barra inferior de pestañas ------------------ */
+
+.barra {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-bottom: var(--seguro-abajo);
+  background: color-mix(in srgb, var(--fondo) 92%, transparent);
+  backdrop-filter: saturate(140%) blur(18px);
+  -webkit-backdrop-filter: saturate(140%) blur(18px);
+  border-top: 1px solid var(--borde);
+}
+
+.barra__item {
+  flex: 1;
+  height: var(--alto-barra);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  color: var(--texto-tenue);
+  transition: color .15s;
+}
+
+.barra__item[data-activo='true'] { color: var(--rojo); }
+.barra__item svg { width: 23px; height: 23px; }
+
+/* Botón central de añadir gasto */
+.barra__mas { flex: 0 0 64px; display: grid; place-items: center; height: var(--alto-barra); }
+
+.barra__mas span {
+  width: 54px;
+  height: 54px;
+  margin-top: -20px;
+  border-radius: 50%;
+  background: var(--rojo);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1;
+  box-shadow: 0 0 0 5px var(--fondo), 0 8px 24px rgba(225, 29, 46, .38);
+  transition: transform .12s;
+}
+
+.barra__mas:active span { transform: scale(.92); }
+
+/* ---------------------------- Hojas ------------------------------- */
+
+.velo {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(12, 12, 18, .38);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: aparecer .2s ease;
+}
+
+.hoja {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  max-width: 560px;
+  margin: 0 auto;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--fondo);
+  border-top: 1px solid var(--borde);
+  box-shadow: 0 -18px 50px rgba(16, 16, 24, .12);
+  border-radius: 22px 22px 0 0;
+  padding-bottom: var(--seguro-abajo);
+  animation: subir .28s cubic-bezier(.32, .72, 0, 1);
+}
+
+.hoja__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--borde);
+  flex-shrink: 0;
+}
+
+.hoja__cuerpo { overflow-y: auto; padding: 18px; -webkit-overflow-scrolling: touch; }
+
+@keyframes subir { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+
+/* --------------------------- Campos ------------------------------- */
+
+.campo { margin-bottom: 16px; }
+
+.campo__etiqueta {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--texto-tenue);
+  margin-bottom: 8px;
+}
+
+.campo input, .campo select, .campo textarea {
+  width: 100%;
+  min-height: 50px;
+  padding: 13px 15px;
+  border-radius: 13px;
+  border: 1px solid var(--borde);
+  background: var(--tarjeta);
+  outline: none;
+  appearance: none;
+}
+
+.campo textarea { min-height: 76px; resize: vertical; }
+
+.campo input:focus, .campo select:focus, .campo textarea:focus {
+  border-color: var(--rojo);
+  box-shadow: 0 0 0 3px var(--acento-suave);
+}
+
+/* ------------------------ Barras de progreso ---------------------- */
+
+.progreso { height: 6px; border-radius: 99px; background: var(--pista); overflow: hidden; }
+.progreso__relleno { height: 100%; border-radius: 99px; transition: width .35s ease; }
+
+/* --------------------------- Utilidades --------------------------- */
+
+.fila-flex { display: flex; align-items: center; gap: 10px; }
+.entre { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.crecer { flex: 1; min-width: 0; }
+.suave { color: var(--texto-suave); }
+.tenue { color: var(--texto-tenue); }
+.peque { font-size: 13px; }
+.centrado { text-align: center; }
+.negativo { color: var(--rojo); }
+.positivo { color: var(--texto); }
+.pila > * + * { margin-top: 10px; }
+
+.vacio { text-align: center; padding: 56px 24px; color: var(--texto-suave); }
+.vacio__emoji { font-size: 40px; display: block; margin-bottom: 14px; opacity: .8; }
+
+.aviso {
+  padding: 13px 15px;
+  border-radius: 13px;
+  background: var(--acento-suave);
+  border: 1px solid #f9cdd2;
+  color: var(--rojo-hondo);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.nota-info {
+  padding: 13px 15px;
+  border-radius: 13px;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-left: 2px solid var(--rojo);
+  color: var(--texto-suave);
+  font-size: 14px;
+  line-height: 1.45;
+  margin-bottom: 14px;
+}
+
+.nota-info strong { color: var(--texto); }
+
+.pastilla {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 99px;
+  background: transparent;
+  border: 1px solid var(--borde);
+  color: var(--texto-suave);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.pastilla[data-activa='true'] {
+  background: var(--rojo);
+  border-color: var(--rojo);
+  color: #fff;
+}
+
+.carrusel {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 18px 4px;
+  margin: 0 -18px 12px;
+  scrollbar-width: none;
+}
+
+.carrusel::-webkit-scrollbar { display: none; }
+
+/* --------------------- Desglose por categoría --------------------- */
+
+.desglose__fila {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+}
+
+.desglose__fila:not(:disabled):active { opacity: .6; }
+
+/* ----------------------- Barras por mes --------------------------- */
+
+.barras {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  height: 128px;
+}
+
+.barras__col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.barras__valor {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--texto-tenue);
+  white-space: nowrap;
+  transition: color .15s;
+}
+
+.barras__col[data-activo='true'] .barras__valor { color: var(--texto); }
+
+/* La pista da el suelo común: todas las barras arrancan de la misma línea. */
+.barras__pista {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.barras__barra {
+  width: 100%;
+  max-width: 32px;
+  background: var(--pista);
+  border-radius: 4px 4px 0 0;
+  transition: height .35s ease, background .15s;
+}
+
+.barras__col[data-activo='true'] .barras__barra {
+  background: linear-gradient(180deg, var(--rojo-vivo) 0%, var(--rojo) 100%);
+}
+
+.barras__etiqueta {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--texto-tenue);
+  text-transform: capitalize;
+  transition: color .15s;
+}
+
+.barras__col[data-activo='true'] .barras__etiqueta { color: var(--rojo); font-weight: 700; }
+
+/* --------------------- Rejilla de categorías ---------------------- */
+
+.rejilla-cat {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px 4px;
+}
+
+.cat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px;
+  border-radius: 14px;
+  min-height: 78px;
+}
+
+.cat__nombre {
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--texto-tenue);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.cat[data-activa='true'] .cat__nombre { color: var(--texto); font-weight: 600; }
+
+.cat[data-activa='true'] .icono {
+  background: var(--rojo);
+  box-shadow: 0 4px 14px rgba(225, 29, 46, .35);
+}
+
+.cat:active { background: var(--tarjeta-alt); }
+
+/* --------------------- Importe grande (alta) ---------------------- */
+
+.importe-grande {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 0 24px;
+}
+
+.importe-grande input {
+  font-size: 58px;
+  font-weight: 700;
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  border: none;
+  background: none;
+  outline: none;
+  padding: 0;
+  width: 100%;
+  max-width: 260px;
+  min-height: auto;
+  color: var(--texto);
+}
+
+.importe-grande input::placeholder { color: var(--texto-tenue); }
+.importe-grande span { font-size: 32px; font-weight: 600; color: var(--rojo); }
+
+@supports (field-sizing: content) {
+  .importe-grande input {
+    field-sizing: content;
+    width: auto;
+    min-width: 3ch;
+  }
+}
+
+/* ------------------------- Titular del mes ------------------------ */
+
+.titular {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  margin: 6px 0 2px;
+}
+
+/* ------------------------- Rejilla de emojis ---------------------- */
+
+.rejilla-emoji {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 7px;
+}
+
+.emoji {
+  aspect-ratio: 1;
+  font-size: 21px;
+  border-radius: 12px;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  display: grid;
+  place-items: center;
+}
+
+.emoji[data-activo='true'] { border-color: var(--rojo); background: var(--acento-suave); }
+
+/* ------------------------- Miniatura ticket ----------------------- */
+
+.ticket {
+  width: 100%;
+  border-radius: 13px;
+  display: block;
+  border: 1px solid var(--borde);
+}
+
+/* ---------------------------- Entrar ------------------------------ */
+
+.entrar {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 32px 26px calc(32px + var(--seguro-abajo));
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.entrar__marca { text-align: center; margin-bottom: 36px; }
+
+.entrar__logo {
+  display: block;
+  width: 66px;
+  height: 66px;
+  margin: 0 auto 18px;
+  border-radius: 20px;
+  background: linear-gradient(160deg, var(--rojo) 0%, var(--rojo-hondo) 100%);
+  box-shadow: 0 10px 34px rgba(255, 45, 64, .32);
+}
+
+/* Cabecera de subpágina: botón atrás · título centrado · hueco simétrico. */
+.cabecera__titulo {
+  flex: 1;
+  text-align: center;
+  font-size: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cabecera__hueco { flex: 0 0 76px; }
+
+/* Franja de "sin cobertura". Discreta pero visible: la app sigue
+   funcionando, así que no hay que alarmar, solo avisar. */
+.sin-conexion {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  padding: 8px 18px;
+  background: var(--texto);
+  color: var(--fondo);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Lo gastado hoy. Va aparte y en grande porque es lo primero que se busca
+   al abrir la app a media tarde: "¿cuánto llevamos hoy?". */
+.hoy {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  border: 1px solid var(--borde);
+  border-left: 3px solid var(--rojo);
+  border-radius: var(--r);
+  background: var(--tarjeta);
+  box-shadow: var(--sombra);
+}
+
+.hoy__etiqueta {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--rojo);
+}
+
+.hoy__cifra {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -.035em;
+}
+
+.hoy__nota {
+  flex: 1 0 100%;
+  font-size: 13px;
+  color: var(--texto-suave);
+}

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover: la app llega hasta los bordes y respetamos el notch por CSS. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+    <title>Nuestros Gastos</title>
+    <meta name="description" content="Los gastos de casa, compartidos entre los dos." />
+
+    <!-- Pantalla completa al añadirla a la pantalla de inicio del iPhone -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Gastos" />
+    <link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="/iconos/icono-192.png" />
+
+    <!-- La app es siempre oscura: la barra del navegador, también. -->
+    <meta name="theme-color" content="#ffffff" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
