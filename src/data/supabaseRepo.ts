@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { Repo } from './repo'
+import { marcarMiembro, yaEsMiembro } from './cache'
 import type {
   Budget, Category, Expense, ImportRule, Recurring, SessionUser, Snapshot,
 } from './types'
@@ -135,14 +136,14 @@ export class SupabaseRepo implements Repo {
     const u = data.session?.user
     if (!u) return null
 
-    await this.asegurarMiembro()
+    await this.asegurarMiembro(u.id)
 
-    const { data: miembro } = await supabase
-      .from('casa_miembros').select('nombre').eq('id', u.id).maybeSingle()
+    // El nombre bonito llega en la carga general; aquí basta con el del
+    // correo para no encadenar otra consulta antes de pintar nada.
     return {
       id: u.id,
       email: u.email ?? null,
-      nombre: miembro?.nombre ?? u.email?.split('@')[0] ?? 'Yo',
+      nombre: u.email?.split('@')[0] ?? 'Yo',
     }
   }
 
@@ -155,9 +156,16 @@ export class SupabaseRepo implements Repo {
    * nunca llega a llamar a esto, y aunque llamara, con la casa llena se
    * queda fuera y no ve un solo dato.
    */
-  private async asegurarMiembro(): Promise<void> {
+  private async asegurarMiembro(idUsuario?: string): Promise<void> {
+    // Entrar en el hogar es cosa de una vez. Repetirlo en cada arranque era
+    // un viaje a la red para que te contestaran "ya estabas dentro".
+    if (idUsuario && yaEsMiembro(idUsuario)) return
+
     const { error } = await supabase.rpc('casa_entrar', { nombre_visible: null })
-    if (!error) return
+    if (!error) {
+      if (idUsuario) marcarMiembro(idUsuario)
+      return
+    }
 
     // "La casa ya tiene sus dos miembros" no es un fallo que deba romper la
     // app: simplemente este usuario no es de la casa y no verá nada.

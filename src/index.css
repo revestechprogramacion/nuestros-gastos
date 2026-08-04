@@ -718,3 +718,31 @@ p { margin: 0; }
   font-size: 13px;
   color: var(--texto-suave);
 }
+
+/* El botón principal de una hoja, pegado abajo y siempre visible: en un
+   formulario largo, tener que buscar "Guardar" es un toque de más. */
+.hoja__pie {
+  position: sticky;
+  bottom: 0;
+  margin: 18px -18px calc(-18px + var(--seguro-abajo));
+  padding: 14px 18px calc(14px + var(--seguro-abajo));
+  background: linear-gradient(to top, var(--fondo) 72%, transparent);
+}
+
+/* Deslizar para borrar: el fondo rojo asoma solo mientras se arrastra. */
+.fila-deslizable { position: relative; overflow: hidden; }
+
+.fila-deslizable__fondo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 22px;
+  background: var(--rojo);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fila-deslizable > .fila { position: relative; }

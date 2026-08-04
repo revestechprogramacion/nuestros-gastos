@@ -139,7 +139,8 @@ export function Gastos() {
             </div>
             <div className="lista">
               {gastos.map((g) => (
-                <FilaGasto key={g.id} gasto={g} onPulsar={setEditando} mostrarFecha={false} />
+                <FilaGasto key={g.id} gasto={g} onPulsar={setEditando} mostrarFecha={false}
+                  onBorrar={(x) => { void t.borrarGasto(x.id) }} />
               ))}
             </div>
           </div>

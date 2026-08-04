@@ -113,6 +113,27 @@ export function AltaGasto({ abierta, onCerrar, gasto }: Props) {
     }
   }
 
+  /** La compra del súper es la misma cada semana: un toque y ya está. */
+  async function repetirHoy() {
+    if (centimos === null || centimos <= 0) return
+    setGuardando(true)
+    setError(null)
+    try {
+      await t.crearGasto({
+        importe: centimos,
+        categoriaId,
+        fecha: hoyISO(),
+        nota: nota.trim() || null,
+        ticketPath: null,
+        origen: 'manual',
+      })
+      onCerrar()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No he podido repetirlo')
+      setGuardando(false)
+    }
+  }
+
   async function borrar() {
     if (!gasto) return
     if (!confirm(`¿Borrar este gasto de ${euros(gasto.importe)}?`)) return
@@ -206,15 +227,23 @@ export function AltaGasto({ abierta, onCerrar, gasto }: Props) {
           onChange={elegirFoto} style={{ display: 'none' }} />
       </div>
 
-      <button className="boton" onClick={guardar} disabled={!puedeGuardar} style={{ marginTop: 8 }}>
-        {guardando ? 'Guardando…' : editando ? 'Guardar cambios' : `Añadir ${centimos ? euros(centimos) : 'gasto'}`}
-      </button>
-
       {editando && (
-        <button className="boton boton--peligro" style={{ marginTop: 8 }} onClick={borrar}>
-          Borrar este gasto
-        </button>
+        <>
+          <button className="boton boton--secundario" style={{ marginTop: 8 }} onClick={repetirHoy}>
+            🔁  Repetir este gasto hoy
+          </button>
+          <button className="boton boton--peligro" style={{ marginTop: 8 }} onClick={borrar}>
+            Borrar este gasto
+          </button>
+        </>
       )}
+
+      {/* Pegado abajo: se llega a él sin buscarlo ni hacer scroll. */}
+      <div className="hoja__pie">
+        <button className="boton" onClick={guardar} disabled={!puedeGuardar}>
+          {guardando ? 'Guardando…' : editando ? 'Guardar cambios' : `Añadir ${centimos ? euros(centimos) : 'gasto'}`}
+        </button>
+      </div>
     </Hoja>
   )
 }

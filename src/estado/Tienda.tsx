@@ -3,6 +3,10 @@ import {
   type ReactNode,
 } from 'react'
 import { getRepo, type Repo } from '../data/repo'
+import {
+  guardarSesion, guardarSnapshot, marcarFijosRevisados, olvidarTodo,
+  sesionGuardada, snapshotGuardado, tocaRevisarFijos,
+} from '../data/cache'
 import { CATEGORIAS_INICIALES } from '../data/seed'
 import { sugerirCategoria } from '../lib/categorizar'
 import { diaEfectivo } from '../lib/periodicos'
@@ -62,9 +66,11 @@ export function useTienda(): Tienda {
 
 export function ProveedorTienda({ children }: { children: ReactNode }) {
   const [repo, setRepo] = useState<Repo | null>(null)
-  const [usuario, setUsuario] = useState<SessionUser | null>(null)
-  const [datos, setDatos] = useState<Snapshot>(SNAPSHOT_VACIO)
-  const [cargando, setCargando] = useState(true)
+  // Arrancamos con lo último que se vio. Es una lectura de disco, así que
+  // la primera pantalla aparece sin esperar a la red.
+  const [usuario, setUsuario] = useState<SessionUser | null>(() => sesionGuardada())
+  const [datos, setDatos] = useState<Snapshot>(() => snapshotGuardado() ?? SNAPSHOT_VACIO)
+  const [cargando, setCargando] = useState(() => sesionGuardada() === null)
   const [error, setError] = useState<string | null>(null)
   const generandoFijos = useRef(false)
 
@@ -72,6 +78,7 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
     try {
       const snap = await r.cargarTodo()
       setDatos(snap)
+      guardarSnapshot(snap)
       setError(null)
       return snap
     } catch (e) {
@@ -80,21 +87,42 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Arranque: repo + sesión + primera carga.
+  /*
+    Arranque en dos tiempos.
+
+    Primer tiempo (ya hecho arriba, sin red): se pinta lo último que se vio.
+    Segundo tiempo (aquí): se comprueba la sesión de verdad y se refrescan
+    los datos. Si algo cambió, se actualiza; si no, no se nota nada.
+
+    Las tareas de mantenimiento —sembrar categorías, generar los gastos
+    fijos— se dejan para el final y no bloquean la pantalla.
+  */
   useEffect(() => {
     let vivo = true
     ;(async () => {
       const r = await getRepo()
       if (!vivo) return
       setRepo(r)
+
       const sesion = await r.sesionActual()
       if (!vivo) return
       setUsuario(sesion)
-      if (sesion) {
-        const snap = await recargarCon(r)
-        if (snap) await sembrarYGenerar(r, snap, recargarCon, generandoFijos)
-      }
+      guardarSesion(sesion)
       setCargando(false)
+      if (!sesion) return
+
+      const snap = await recargarCon(r)
+      if (!vivo || !snap) return
+
+      // Ahora sí sabemos cómo se llama en la casa, no solo su correo.
+      const enLaCasa = snap.miembros.find((m) => m.id === sesion.id)
+      if (enLaCasa && enLaCasa.nombre !== sesion.nombre) {
+        const conNombre = { ...sesion, nombre: enLaCasa.nombre }
+        setUsuario(conNombre)
+        guardarSesion(conNombre)
+      }
+
+      await sembrarYGenerar(r, snap, recargarCon, generandoFijos)
     })()
     return () => { vivo = false }
   }, [recargarCon])
@@ -178,6 +206,7 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
       await r.entrar(email, password)
       const sesion = await r.sesionActual()
       setUsuario(sesion)
+      guardarSesion(sesion)
       const snap = await recargarCon(r)
       if (snap) await sembrarYGenerar(r, snap, recargarCon, generandoFijos)
     },
@@ -187,12 +216,14 @@ export function ProveedorTienda({ children }: { children: ReactNode }) {
       if (!haySesion) return false
       const sesion = await r.sesionActual()
       setUsuario(sesion)
+      guardarSesion(sesion)
       const snap = await recargarCon(r)
       if (snap) await sembrarYGenerar(r, snap, recargarCon, generandoFijos)
       return true
     },
     salir: async () => {
       if (repo) await repo.salir()
+      olvidarTodo()
       setUsuario(null)
       setDatos(SNAPSHOT_VACIO)
     },
@@ -328,8 +359,11 @@ async function sembrarYGenerar(
       actual = (await recargar(repo)) ?? actual
     }
 
-    const creados = await generarFijos(repo, actual)
-    if (creados > 0) await recargar(repo)
+    if (tocaRevisarFijos(hoyISO())) {
+      const creados = await generarFijos(repo, actual)
+      marcarFijosRevisados(hoyISO())
+      if (creados > 0) await recargar(repo)
+    }
   } finally {
     cerrojo.current = false
   }
